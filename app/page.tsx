@@ -58,107 +58,78 @@ export default function Home() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    console.log(values);
-    setShowSuccess(true);
-    setLoading(true);
+  // function onSubmit(values: z.infer<typeof formSchema>) {
+  //   // Do something with the form values.
+  //   // ✅ This will be type-safe and validated.
+  //   console.log(values);
+  //   setShowSuccess(true);
+  //   setLoading(true);
 
-      // Reset the form to default values
-  form.reset({
-    email: "",
-    phone: "",
-    description: "Select",
-  });
+  //     // Reset the form to default values
+  // form.reset({
+  //   email: "",
+  //   phone: "",
+  //   description: "Select",
+  // });
+  // }
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      setLoading(true);
+      
+      // Construct the contactinfo JSON object with only the fields you want to send
+      const contactInfo = {
+        "Contact Email": values.email,
+        // Include only these additional fields
+        ...(values.phone && { "Phone": values.phone }), // Only include if phone exists
+        ...(values.description !== "Select" && { "Description": values.description }) // Only include if not default
+      };
+  
+      // URL encode the contactinfo JSON
+      const encodedContactInfo = encodeURIComponent(JSON.stringify(contactInfo));
+  
+      // Construct the URL
+      const apiUrl = new URL('https://campaigns.zoho.com/api/v1.1/json/listsubscribe');
+      apiUrl.searchParams.append('resfmt', 'JSON');
+      apiUrl.searchParams.append('listkey', `${process.env.NEXT_PUBLIC_ZOHO_LIST_KEY}`);
+      apiUrl.searchParams.append('contactinfo', encodedContactInfo);
+      apiUrl.searchParams.append('source', 'WebsiteForm');
+  
+      // Make the POST request
+      const response = await fetch(apiUrl.toString(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(process.env.ZOHO_OAUTH_TOKEN && { 
+            'Authorization': `Zoho-oauthtoken ${process.env.ZOHO_OAUTH_TOKEN}`
+          })
+        },
+        mode: 'cors'
+      });
+  
+      const responseData = await response.json();
+  
+      if (!response.ok || responseData.status === 'error') {
+        throw new Error(responseData.message || 'Subscription failed');
+      }
+  
+      console.log('Successfully subscribed:', responseData);
+      setShowSuccess(true);
+      
+      // Reset form
+      form.reset({
+        email: "",
+        phone: "",
+        description: "Select"
+      });
+  
+    } catch (error: any) {
+      console.error('Subscription error:', error);
+      // Display error to user
+      alert(`Subscription failed: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   }
-  // async function onSubmit(values: z.infer<typeof formSchema>) {
-  //   try {
-  //     setLoading(true);
-      
-  //     // Make POST request
-  //     const response = await fetch('/api/submit-form', {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify(values),
-  //     });
-  
-  //     if (!response.ok) {
-  //       throw new Error('Submission failed');
-  //     }
-  
-  //     const result = await response.json();
-  //     console.log('Form submitted successfully:', result);
-      
-  //     // Only show success and reset if the request was successful
-  //     setShowSuccess(true);
-  //     form.reset({
-  //       email: "",
-  //       phone: "",
-  //       description: "Select",
-  //     });
-  //   } catch (error) {
-  //     console.error('Error submitting form:', error);
-  //     // You might want to show an error message to the user here
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }
-
-  // async function onSubmit(values: z.infer<typeof formSchema>) {
-  //   try {
-  //     setLoading(true);
-      
-  //     // Construct the contactinfo JSON object based on your form values
-  //     const contactInfo = {
-  //       "Contact Email": values.email,  // Make sure these match your form schema
-  //       "Phone Number": values.phone,
-  //       "Description": values.description,
-  //       // Add other fields as needed
-  //     };
-  
-  //     // URL encode the contactinfo JSON
-  //     const encodedContactInfo = encodeURIComponent(JSON.stringify(contactInfo));
-  
-  //     // Construct the URL with query parameters
-  //     const url = new URL('https://campaigns.zoho.com/api/v1.1/json/listsubscribe');
-  //     url.searchParams.append('resfmt', 'JSON');
-  //     url.searchParams.append('listkey', process.env.NEXT_PUBLIC_ZOHO_LIST_KEY || '[YOUR_LIST_KEY]');
-  //     url.searchParams.append('contactinfo', encodedContactInfo);
-  //     url.searchParams.append('source', process.env.NEXT_PUBLIC_ZOHO_SOURCE || '[YOUR_SOURCE_NAME]');
-  
-  //     // Make POST request
-  //     const response = await fetch(url.toString(), {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Authorization': `Zoho-oauthtoken ${process.env.ZOHO_OAUTH_TOKEN}`
-  //       },
-  //     });
-  
-  //     if (!response.ok) {
-  //       const errorData = await response.json();
-  //       throw new Error(errorData.message || 'Subscription failed');
-  //     }
-  
-  //     const responseData = await response.json();
-  //     console.log('Subscription successful:', responseData);
-      
-  //     setShowSuccess(true);
-  //     form.reset({
-  //       email: "",
-  //       phone: "",
-  //       description: "Select",
-  //     });
-  //   } catch (error) {
-  //     console.error('Error subscribing:', error);
-  //     // Handle error (show toast, etc.)
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }
   
   return (
     <main>
