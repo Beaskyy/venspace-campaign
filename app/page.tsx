@@ -58,19 +58,7 @@ export default function Home() {
     },
   });
 
-  // function onSubmit(values: z.infer<typeof formSchema>) {
-  //   // Do something with the form values.
-  //   // ✅ This will be type-safe and validated.
-  //   setShowSuccess(true);
-  //   setLoading(true);
 
-  //     // Reset the form to default values
-  // form.reset({
-  //   email: "",
-  //   phone: "",
-  //   description: "Select",
-  // });
-  // }
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setLoading(true);
