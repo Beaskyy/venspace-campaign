@@ -2,7 +2,15 @@
 
 import { Hero } from "@/components/hero";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogOverlay } from "@/components/ui/dialog";
+import { toast } from "sonner";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +36,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import Image from "next/image";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -43,6 +52,7 @@ const formSchema = z.object({
   description: z
     .string()
     .min(1, { message: "Please select what best describes you" }),
+  testerProgram: z.boolean(),
 });
 
 export default function Home() {
@@ -55,69 +65,158 @@ export default function Home() {
       email: "",
       phone: "",
       description: "",
+      testerProgram: false,
     },
   });
 
+  // async function onSubmit(values: z.infer<typeof formSchema>) {
+  //   try {
+  //     setLoading(true);
+
+  //     const apiValues = {
+  //       ...values,
+  //       testerProgram: values.testerProgram ? "Yes" : "No"
+  //     };
+
+  //     const response = await fetch("/api/sheets", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify(apiValues),
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error("Failed to submit to Google Sheets");
+  //     }
+
+  //     console.log("Successfully subscribed:", values);
+  //     setShowSuccess(true);
+  //     setTimeout(() => {
+  //       setShowSuccess(false)
+  //     }, 5000);
+
+  //     // Reset form
+  //     form.reset({
+  //       email: "",
+  //       phone: "",
+  //       description: "",
+  //     });
+  //   } catch (error: any) {
+  //     console.error("Subscription error:", error);
+  //     alert(`Subscription failed: ${error.message}`);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }
+
+  // async function onSubmit(values: z.infer<typeof formSchema>) {
+  //   try {
+  //     setLoading(true);
+
+  //     const apiValues = {
+  //       ...values,
+  //       testerProgram: values.testerProgram ? "Yes" : "No"
+  //     };
+
+  //     const response = await fetch("/api/sheets", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify(apiValues),
+  //     });
+
+  //     const data = await response.json(); // Parse the JSON response
+
+  //     if (!response.ok) {
+  //       // Handle the case where email or phone exists
+  //       if (data.error === "Entry already exists") {
+  //         throw new Error(
+  //           data.details.emailExists
+  //             ? "This email is already registered"
+  //             : "This phone number is already registered"
+  //         );
+  //       }
+  //       throw new Error(data.error || "Failed to submit to Google Sheets");
+  //     }
+
+  //     console.log("Successfully subscribed:", values);
+  //     setShowSuccess(true);
+  //     setTimeout(() => {
+  //       setShowSuccess(false)
+  //     }, 5000);
+
+  //     // Reset form
+  //     form.reset({
+  //       email: "",
+  //       phone: "",
+  //       description: "",
+  //     });
+  //   } catch (error: any) {
+  //     console.error("Subscription error:", error);
+  //     toast(error.message); // Set the error state
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setLoading(true);
-      
-      // Construct the contactinfo JSON object with only the fields you want to send
-      const contactInfo = {
-        "Contact Email": values.email,
-        // Include only these additional fields
-        ...(values.phone && { "Phone": values.phone }), // Only include if phone exists
-        ...(values.description !== "Select" && { "Description": values.description }) // Only include if not default
+      toast.dismiss(); // Clear any existing toasts
+
+      const apiValues = {
+        ...values,
+        testerProgram: values.testerProgram ? "Yes" : "No",
       };
-  
-      // URL encode the contactinfo JSON
-      const encodedContactInfo = encodeURIComponent(JSON.stringify(contactInfo));
-  
-      // Construct the URL
-      const apiUrl = new URL('https://campaigns.zoho.com/api/v1.1/json/listsubscribe');
-      apiUrl.searchParams.append('resfmt', 'JSON');
-      apiUrl.searchParams.append('listkey', `${process.env.NEXT_PUBLIC_ZOHO_LIST_KEY}`);
-      apiUrl.searchParams.append('contactinfo', encodedContactInfo);
-      apiUrl.searchParams.append('source', 'WebsiteForm');
-  
-      // Make the POST request
-      const response = await fetch(apiUrl.toString(), {
-        method: 'POST',
+
+      const response = await fetch("/api/sheets", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          ...(process.env.ZOHO_OAUTH_TOKEN && { 
-            'Authorization': `Zoho-oauthtoken ${process.env.ZOHO_OAUTH_TOKEN}`
-          })
+          "Content-Type": "application/json",
         },
-        mode: 'cors'
+        body: JSON.stringify(apiValues),
       });
-  
-      const responseData = await response.json();
-  
-      if (!response.ok || responseData.status === 'error') {
-        throw new Error(responseData.message || 'Subscription failed');
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.error === "Entry already exists") {
+          // Show specific error toast for duplicate entries
+          toast.error(data.details.message, {
+            duration: 5000,
+            position: "top-center",
+          });
+          return; // Exit early
+        }
+        throw new Error(data.error || "Failed to submit to Google Sheets");
       }
-  
-      console.log('Successfully subscribed:', responseData);
+
       setShowSuccess(true);
-      
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 5000);
+
       // Reset form
       form.reset({
         email: "",
         phone: "",
-        description: "Select"
+        description: "",
+        testerProgram: false,
       });
-  
     } catch (error: any) {
-      console.error('Subscription error:', error);
-      // Display error to user
-      alert(`Subscription failed: ${error.message}`);
+      console.error("Subscription error:", error);
+      // Show generic error toast
+      toast.error(error.message || "An unexpected error occurred", {
+        duration: 5000,
+        position: "top-center",
+      });
     } finally {
       setLoading(false);
     }
   }
-  
+
   return (
     <main>
       <Dialog open={true}>
@@ -127,9 +226,12 @@ export default function Home() {
             onInteractOutside={(e) => e.preventDefault()} // Prevents outside clicks
             onEscapeKeyDown={(e) => e.preventDefault()} // Prevents ESC key
           >
+            <VisuallyHidden>
+              <DialogTitle>My Hidden Dialog Title</DialogTitle>
+            </VisuallyHidden>
             <div className="pointer-events-auto flex flex-col gap-6">
               <div className="flex flex-col gap-0.5">
-                <h2 className="text-[#333333] md:text-[28px] text-xl font-bold">
+                <h2 className="text-[#333333] md:text-[28px] text-xl font-bold tracking-[1px]">
                   Get early access to{" "}
                   <span className="text-[#F44363]">Venspace</span>
                 </h2>
@@ -166,7 +268,9 @@ export default function Home() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
+                        <FormLabel className="text-sm text-[#5C5C5C] font-medium">
+                          Phone Number
+                        </FormLabel>
                         <FormControl>
                           <Input
                             inputMode="tel"
@@ -223,12 +327,33 @@ export default function Home() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="testerProgram"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={(e) => field.onChange(e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-[#F44363] focus:ring-[#F44363]"
+                          />
+                        </FormControl>
+                        <FormLabel className="text-sm text-[#5C5C5C] font-normal">
+                          I&apos;d like to be part of your testers program and
+                          provide feedback
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
                   <Button
                     type="submit"
                     className="w-full bg-[#F44363]"
                     disabled={loading}
                   >
                     Unlock the Experience
+                    {loading && <Loader2 size={5} className="animate-spin" />}
                   </Button>
                 </form>
               </Form>
