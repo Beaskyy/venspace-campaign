@@ -91,7 +91,6 @@ export default function Home() {
 
       if (!response.ok) {
         if (data.error === "Entry already exists") {
-          // Show specific error toast for duplicate entries
           toast.error(data.details.message, {
             duration: 5000,
             position: "top-center",
